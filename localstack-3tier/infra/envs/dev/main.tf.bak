@@ -1,0 +1,28 @@
+locals {
+  tags = {
+    project = var.project
+    owner   = "arjun"
+    env     = "dev"
+  }
+}
+
+module "artifacts_bucket" {
+  source = "../../modules/s3_bucket"
+  name   = var.artifacts_bucket
+  tags   = local.tags
+}
+
+module "logs_bucket" {
+  source = "../../modules/s3_bucket"
+  name   = var.logs_bucket
+  tags   = local.tags
+}
+
+module "queue" {
+  source                  = "../../modules/sqs_queue"
+  name                    = var.queue_name
+  dlq_name                = "${var.queue_name}-dlq"
+  message_retention_secs  = 1209600 # 14 days
+  visibility_timeout_secs = 30
+  tags                    = local.tags
+}

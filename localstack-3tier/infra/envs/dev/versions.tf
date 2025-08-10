@@ -2,7 +2,7 @@ terraform {
   required_version = ">= 1.6.0"
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
+      source = "hashicorp/aws"
     }
   }
 }
@@ -15,7 +15,7 @@ provider "aws" {
   skip_credentials_validation = true
   skip_requesting_account_id  = true
 
-  endpoints = {
+  endpoints {
     s3       = "http://localhost:4566"
     dynamodb = "http://localhost:4566"
     sqs      = "http://localhost:4566"
