@@ -1,0 +1,28 @@
+services:
+  app:
+    build: ./app
+    network_mode: "host"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
+      SNS_TOPIC_ARN: ${SNS_TOPIC_ARN}
+    command: ["python","/srv/app.py"]
+  worker:
+    build: ./worker
+    network_mode: "host"
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
+      QUEUE_URL: ${QUEUE_URL}
+    command: ["python","/srv/worker.py"]
+  nginx:
+    image: nginx:stable
+    network_mode: "host"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    # nginx serves on host:8080
