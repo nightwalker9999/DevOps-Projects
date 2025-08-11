@@ -1,58 +1,33 @@
-awesome—here’s a drop-in README.md you can paste at DevOps-Projects/localstack-3tier/README.md. I included dates for what we completed so far and a simple daily log template you can append to each day.
+# LocalStack 3-Tier (Messaging-first) — Terraform + Docker Compose
 
-⸻
+A compact, interview-ready project that runs **AWS-like services locally** with **LocalStack** and **Terraform**, plus a **Docker Compose** app stack.
 
-LocalStack 3-Tier (Messaging-first) — Terraform + Docker Compose
+- **Infra (Terraform → LocalStack):** S3 (state + artifacts + logs), DynamoDB (state lock), SQS (with DLQ), SNS (topic), CloudWatch Logs (log group).
+- **App (Docker Compose):** `app` (Flask HTTP API that publishes to SNS) → SNS → SQS → `worker` (Python consumer) + `nginx` reverse proxy.
 
-A compact, interview-ready project that runs AWS-like services locally with LocalStack and Terraform, plus a Docker Compose app stack:
-	•	Infra (Terraform → LocalStack): S3 (state + artifacts + logs), DynamoDB (state lock), SQS (with DLQ), SNS (topic), CloudWatch Logs (log group).
-	•	App (Docker Compose): app (Flask HTTP API that publishes to SNS) → SNS → SQS → worker (Python consumer) + nginx reverse proxy.
+> Goal: practice IaC, state/locking, messaging patterns, and CI-friendly local dev without cloud costs.
 
-Goal: practice IaC, state/locking, messaging patterns, and CI-friendly local dev without cloud costs.
+---
 
-⸻
+## Repo layout
 
-Repo layout
+<img width="530" height="476" alt="image" src="https://github.com/user-attachments/assets/c92ba58d-bd8e-46d6-a766-c2f1665be6cc" />
 
-localstack-3tier/
-├─ infra/
-│  ├─ modules/
-│  │  ├─ s3_bucket/           # versioned S3 bucket
-│  │  ├─ sqs_queue/           # SQS + DLQ
-│  │  ├─ sns_topic/           # SNS topic
-│  │  └─ cw_log_group/        # CloudWatch log group
-│  └─ envs/dev/
-│     ├─ main.tf              # root wiring of modules
-│     ├─ variables.tf
-│     ├─ outputs.tf
-│     ├─ versions.tf          # AWS provider + LocalStack endpoints
-│     └─ backend.tf           # S3 backend (LocalStack) + DDB lock
-├─ compose/
-│  ├─ docker-compose.yml
-│  ├─ .env                    # generated from TF outputs
-│  ├─ app/{Dockerfile,app.py}
-│  ├─ worker/{Dockerfile,worker.py}
-│  └─ nginx/nginx.conf
-├─ scripts/
-│  └─ bootstrap_state_localstack.sh
-└─ Makefile
+---
 
+## Prereqs
 
-⸻
+- Docker & Docker Compose  
+- Python 3 (for LocalStack CLI)  
+- Terraform ≥ 1.5  
+- LocalStack CLI & AWS CLI shim:
+  ```bash
+  pipx install localstack awscli-local \
+    || pip install --user localstack awscli-local
 
-Prereqs
-	•	Docker & Docker Compose
-	•	Python 3 (for LocalStack CLI install)
-	•	Terraform ≥ 1.5
-	•	LocalStack CLI & AWS CLI shim:
+---
 
-pipx install localstack awscli-local || pip install --user localstack awscli-local
-
-
-
-⸻
-
-Quick start
+## Quick start
 
 1) Start LocalStack & set env
 
@@ -95,9 +70,9 @@ QURL=$(awslocal sqs get-queue-url --queue-name arjun-main-queue --query QueueUrl
 awslocal sqs receive-message --queue-url "$QURL" --wait-time-seconds 2
 
 
-⸻
+---
 
-Compose stack (app + worker + nginx)
+## Compose stack (app + worker + nginx)
 
 Compose uses host networking so containers can reach LocalStack via http://127.0.0.1:4566. If you’re on non-Linux Docker, swap to a user-defined network and address the LocalStack container by name.
 
@@ -125,7 +100,7 @@ docker compose -f compose/docker-compose.yml logs -f worker
 make compose-down
 
 
-⸻
+---
 
 Make targets
 
@@ -195,11 +170,11 @@ git remote add origin <your-fork-url>  # filter-repo removes origin
 git push -f origin <branch>
 
 
-⸻
+---
 
-Daily log (append here)
+## Daily log (append here)
 
-2025-08-09 — Day 1
+# 2025-08-09 — Day 1
 	•	Brought up LocalStack (localstack start -d) and env exports.
 	•	Bootstrapped TF backend: S3 tfstate-arjun + DDB tfstate-locks.
 	•	Added modules + root wiring:
@@ -207,12 +182,12 @@ Daily log (append here)
 	•	SQS arjun-main-queue + DLQ.
 	•	make init/plan/apply → green. Verified via awslocal s3 ls, awslocal sqs list-queues.
 
-2025-08-10 — Day 2
+# 2025-08-10 — Day 2
 	•	Added SNS topic arjun_notify and CloudWatch Logs group /arjun/app.
 	•	Created SQS queue policy to allow SNS → SQS, and a subscription to the queue.
 	•	Tested end-to-end: sns publish → sqs receive-message → message received.
 
-2025-08-11 — Day 3
+# 2025-08-11 — Day 3
 	•	Built Docker Compose stack:
 	•	app (Flask) publishes to SNS (POST /notify),
 	•	worker (Python) polls SQS and prints body,
@@ -220,21 +195,21 @@ Daily log (append here)
 	•	Verified: curl :8080/health OK; posting produces messageId; worker logs show got: ....
 	•	Git hygiene: added .gitignore, rewrote history to remove .terraform/**, force-pushed cleaned branch, updated submodule pointer in parent repo.
 
-Template for tomorrow:
-YYYY-MM-DD — Day N
+## Template for tomorrow:
+# YYYY-MM-DD — Day N
 	•	What infra/app change shipped
 	•	One pitfall + fix
 	•	One command you used and why
 
-⸻
+---
 
-What’s next
+# What’s next
 	•	Add MySQL service to Compose, seed script, and a small route to write/read to DB.
 	•	Optionally push artifacts to S3 and have the app pull them at startup.
 	•	Add a CI pipeline (Jenkins/GitHub Actions): fmt/validate/plan on PR, apply on main, plus a simple policy gate.
 
-⸻
+---
 
-License: MIT (or your choice)
+License: MIT
 
 Author: Arjun — learning DevOps the practical way with LocalStack + Terraform.
