@@ -195,6 +195,20 @@ git push -f origin <branch>
 	•	Verified: curl :8080/health OK; posting produces messageId; worker logs show got: ....
 	•	Git hygiene: added .gitignore, rewrote history to remove .terraform/**, force-pushed cleaned branch, updated submodule pointer in parent repo.
 
+# 2025-08-14 - Day 4 & 5
+	• 	Fixed provider to use LocalStack STS; ‘InvalidClientTokenId’ resolved via endpoints + skips.
+	• 	Hardened S3 modules: public-access block, SSE AES256, lifecycle (30d→STANDARD_IA, expire 365d).
+	• 	Verified with awslocal: lifecycle/encryption/PAB all present.
+	Commands: terraform init -reconfigure, make plan/apply, awslocal s3api get-bucket-*
+
+## VPC 101 (90s pitch)
+- **Subnets**: public (has route to Internet Gateway) vs private (egress via NAT Gateway).
+- **Security Group (SG)**: *stateful*, instance-level; allow needed ingress/egress by port.
+- **NACL**: *stateless*, subnet-level; coarse controls (rarely touch once set).
+- **Typical 3-tier**: ALB in public subnets → app in private subnets → DB in private subnets (no internet). Outbound from private goes via NAT.
+- **Why**: principle of least privilege, stable inbound via ALB, controlled egress via NAT, tighter east-west with SGs.
+
+
 ## Template for tomorrow:
 # YYYY-MM-DD — Day N
 	•	What infra/app change shipped
@@ -209,6 +223,8 @@ git push -f origin <branch>
 	•	Add a CI pipeline (Jenkins/GitHub Actions): fmt/validate/plan on PR, apply on main, plus a simple policy gate.
 
 ---
+
+
 
 License: MIT
 

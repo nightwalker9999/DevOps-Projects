@@ -34,10 +34,10 @@ module "sns_topic_notifications" {
 }
 
 module "cw_logs_group" {
-  source    = "../../modules/cw_logs_group"
-  name      = "/arjun/app"
+  source            = "../../modules/cw_logs_group"
+  name              = "/arjun/app"
   retention_in_days = 7
-  tags      = local.tags
+  tags              = local.tags
 }
 
 # Allow SNS to send to our SQS queue
