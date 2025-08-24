@@ -1,28 +1,86 @@
 services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sns,sqs,logs,cloudwatch,s3,dynamodb 
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    healthcheck:
+      test: ["CMD-SHELL", "set -e; H=$(curl -sf http://localhost:4566/_localstack/health); \
+        echo \"$$H\" | egrep -q '\"sns\": \"(available|running)\"'; \
+        echo \"$$H\" | egrep -q '\"sqs\": \"(available|running)\"'; \
+        echo \"$$H\" | egrep -q '\"s3\": \"(available|running)\"'; \
+        echo \"$$H\" | egrep -q '\"dynamodb\": \"(available|running)\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
   app:
     build: ./app
-    network_mode: "host"
+    depends_on:
+      localstack:
+        condition: service_healthy
     environment:
       PYTHONUNBUFFERED: "1"
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
-      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
-      SNS_TOPIC_ARN: ${SNS_TOPIC_ARN}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://localstack:4566}     # ✅ use service name
+      SNS_TOPIC_ARN: ${SNS_TOPIC_ARN:-arn:aws:sns:us-east-1:000000000000:arjun_notify}
     command: ["python","/srv/app.py"]
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-appdb}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpw}
+      MYSQL_USER: ${MYSQL_USER:-appuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-apppw}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./infra/sql/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u${MYSQL_USER} -p${MYSQL_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 40
+
   worker:
     build: ./worker
-    network_mode: "host"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
     environment:
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
-      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
-      QUEUE_URL: ${QUEUE_URL}
-    command: ["python","/srv/worker.py"]
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://localstack:4566}
+      QUEUE_URL: ${QUEUE_URL:-http://localstack:4566/000000000000/arjun-main-queue}
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-appdb}
+      DB_USER: ${DB_USER:-app}
+      DB_PASS: ${DB_PASS:-app}
+
   nginx:
     image: nginx:stable
-    network_mode: "host"
+    # Prefer normal bridge networking unless you really need host ports:
+    # network_mode: "host"
+    ports:
+      - "8080:8080"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    # nginx serves on host:8080
+
+volumes:
+  mysql_data:

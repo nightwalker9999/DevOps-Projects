@@ -59,7 +59,6 @@ resource "aws_sqs_queue_policy" "allow_sns" {
 }
 
 # Subscribe SQS to the SNS sns_topic
-
 # Need to understand why we added the policy resource. What is policy? What is arn? What is topic? What is queue here?
 resource "aws_sns_topic_subscription" "to_queue" {
   topic_arn            = module.sns_topic_notifications.sns_topic_arn
